@@ -1,0 +1,38 @@
+services:
+  # 1. The Database
+  db:
+    image: postgres:16
+    container_name: stock_db_container
+    restart: always
+    environment:
+      POSTGRES_USER: dlt_user
+      POSTGRES_PASSWORD: dlt_password
+      POSTGRES_DB: stock_db
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dlt_user -d stock_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # 2. The Ingestion App (Runs the script.sh)
+  dlt_ingestion:
+    build: .
+    container_name: dlt_ingestor
+    platform: linux/amd64
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      - DESTINATION__POSTGRES__CREDENTIALS__HOST=db
+      - DESTINATION__POSTGRES__CREDENTIALS__PORT=5432
+    volumes:
+      - ./.dlt:/app/.dlt 
+
+volumes:
+  postgres_data:

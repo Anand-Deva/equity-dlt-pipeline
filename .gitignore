@@ -1,0 +1,14 @@
+.env
+.venv
+.curserignore
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.duckdb
+*.dlt
+*.streamlit
+*.db
+*.cursorignore
+*.cursor
