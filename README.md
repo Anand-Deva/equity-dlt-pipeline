@@ -1,4 +1,4 @@
-# 📊 Data Load Tool (dlt) – Stock Ingestion Project
+# 📊 Data Load Tool (dlt) – Stock Data Ingestion Project
 
 This repository contains a **dlt-based data ingestion pipeline** that loads stock market data from multiple sources into a PostgreSQL database.
 
