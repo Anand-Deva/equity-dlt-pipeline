@@ -1,0 +1,13 @@
+# put your configuration values here
+
+[runtime]
+log_level="WARNING"  # the system log level of dlt
+# use the dlthub_telemetry setting to enable/disable anonymous usage data reporting, see https://dlthub.com/docs/reference/telemetry
+dlthub_telemetry = true
+
+
+[destination.bigquery]
+location="EU"
+http_timeout=15.0
+file_upload_timeout=1800.0
+retry_deadline=60.0
