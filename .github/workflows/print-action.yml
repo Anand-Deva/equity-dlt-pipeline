@@ -1,10 +1,14 @@
 name: Print workflow
 on: workflow_dispatch
 jobs:
-  print-job:
+  print-greeting:
     runs-on: ubuntu-latest
     steps:
     - name: Print Greetings
       run: echo 'Hallo There!'
+  print-goodbye:
+    needs: print-greeting
+    runs-on: ubuntu-latest
+    steps:
     - name: Print Goodbye
       run: echo 'Good Bye!:)'
