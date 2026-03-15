@@ -14,28 +14,31 @@ jobs:
       AWS_REGION: eu-central-1
       ECR_REPOSITORY: equity-dlt-pipeline
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        - name: Checkout
+            uses: actions/checkout@v4
+        
+        - name: Debug OIDC Token
+            run: echo "ID Token is present if this length is > 0: ${#ACTIONS_ID_TOKEN_REQUEST_URL}"
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+        - name: Configure AWS credentials
+            uses: aws-actions/configure-aws-credentials@v4
+            with:
+            role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+            aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        - name: Login to Amazon ECR
+            id: login-ecr
+            uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          # Build the image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          # Also tag it as latest
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          # Push both tags
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        - name: Build, tag, and push image to Amazon ECR
+            env:
+            ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+            IMAGE_TAG: ${{ github.sha }}
+            run: |
+            # Build the image
+            docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+            # Also tag it as latest
+            docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+            # Push both tags
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+            docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
