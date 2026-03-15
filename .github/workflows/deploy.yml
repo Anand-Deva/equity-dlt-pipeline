@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         
+      - name: Show Repo Info
+        run: echo "The sub should look like repo:${{ github.repository }}:ref:${{ github.ref }}"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
