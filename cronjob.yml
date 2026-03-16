@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bigquery-ingestion
+spec:
+  schedule: "0/5 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: ingestion-script
+            image: 040235853319.dkr.ecr.eu-central-1.amazonaws.com/equity-dlt-pipeline:latest
+            envFrom:
+              - secretRef:
+                  name: bq-ingestion-secret
+            env:
+              - name: DESTINATION__FILESYSTEM__BUCKET_URL
+                value: "gs://airflow-bucket-for-demo"

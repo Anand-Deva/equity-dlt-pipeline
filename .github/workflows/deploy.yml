@@ -7,12 +7,16 @@ permissions:
   id-token: write
   contents: read
 
+# GLOBAL ENV
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  AWS_REGION: eu-central-1
+
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    env:
-      AWS_REGION: eu-central-1
-      ECR_REPOSITORY: equity-dlt-pipeline
+    outputs:
+      registry: ${{ steps.login-ecr.outputs.registry }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,13 +33,49 @@ jobs:
 
       - name: Build, tag, and push image to Amazon ECR
         env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          ECR_REPOSITORY: equity-dlt-pipeline
         run: |
-          # Build the image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          # Also tag it as latest
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          # Push both tags
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
+          docker tag ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.ACTIONS_EC2_ACCESS_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update Kubeconfig
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name data_pipeline
+
+      - name: Kubernetes Secret Update
+        env:
+          DESTINATION__GOOGLE__CREDENTIALS__TYPE: service_account
+          DESTINATION__GOOGLE__CREDENTIALS__AUTH_URI: https://accounts.google.com/o/oauth2/auth
+          DESTINATION__GOOGLE__CREDENTIALS__TOKEN_URI: https://oauth2.googleapis.com/token
+          DESTINATION__GOOGLE__CREDENTIALS__AUTH_PROVIDER_X509_CERT_URL: https://www.googleapis.com/oauth2/v1/certs
+        run: |
+          kubectl create secret generic bq-ingestion-secret \
+            --from-literal=DESTINATION__GOOGLE__CREDENTIALS__TYPE='${{ env.DESTINATION__GOOGLE__CREDENTIALS__TYPE }}' \
+            --from-literal=DESTINATION__GOOGLE__CREDENTIALS__AUTH_URI='${{ env.DESTINATION__GOOGLE__CREDENTIALS__AUTH_URI }}' \
+            --from-literal=DESTINATION__GOOGLE__CREDENTIALS__TOKEN_URI='${{ env.DESTINATION__GOOGLE__CREDENTIALS__TOKEN_URI }}' \
+            --from-literal=DESTINATION__GOOGLE__CREDENTIALS__AUTH_PROVIDER_X509_CERT_URL='${{ env.DESTINATION__GOOGLE__CREDENTIALS__AUTH_PROVIDER_X509_CERT_URL }}' \
+            --from-literal=DESTINATION__GOOGLE__CREDENTIALS__PROJECT_ID='${{ secrets.GCP_PROJECT_ID }}' \
+            --from-literal=DESTINATION__GOOGLE__CREDENTIALS__PRIVATE_KEY='${{ secrets.GCP_PRIVATE_KEY }}' \
+            --from-literal=DESTINATION__GOOGLE__CREDENTIALS__CLIENT_EMAIL='${{ secrets.GCP_CLIENT_EMAIL }}' \
+            --from-literal=stockdata_token='${{ secrets.STOCKDATA_TOKEN }}' \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Deploy CronJob
+        run: |
+          # Replace the image tag in the yaml before applying
+          sed -i "s|image:.*|image: ${{ needs.build.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}|g" cronjob.yml
+          kubectl apply -f cronjob.yml
