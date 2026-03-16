@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: bigquery-ingestion
 spec:
-  schedule: "0/30 * * * *"
+  schedule: "0/15 * * * *"
   jobTemplate:
     spec:
       template:
