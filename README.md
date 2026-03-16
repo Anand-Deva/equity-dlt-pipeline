@@ -48,6 +48,8 @@ dlt[postgres, bigquery, filesystem] = "*"
 
 ## Build & Start the Containers
 
+## Run in local machine
+
 From the project root (where docker-compose.yml is located):
 ```bash
 docker compose up --build -d
@@ -75,13 +77,6 @@ Make sure to set the search path:
 SET search_path TO <dataset-name>, public;
 ```
 
----
-
-## Working with BigQuery Data
-The pipeline stages files to a **Google Cloud Storage bucket** and then ingest them into **BigQuery**. 
-**Google Cloud Storage bucket** is also used to simply uploads a local directory to GCS in `storage_pipeline.py`.
-
-
 ## Stopping the Environment
 ```bash
 docker compose down
@@ -90,6 +85,35 @@ To remove volumes as well:
 ```bash
 docker compose down -v
 ```
+
+## CI/CD & Deployment (AWS EKS)
+This project uses GitHub Actions to automate the build-and-deploy process. Every push to the main branch triggers a container build, which is then deployed to Amazon EKS as a scheduled CronJob.
+
+### Architecture
+
+* Build: GitHub Actions builds the Docker image and tags it with the Git Commit SHA.
+* Store: The image is pushed to Amazon ECR (Elastic Container Registry).
+* Sync: GitHub Actions securely injects environment variables into a Kubernetes Secret.
+* Deploy: The cronjob.yml is updated with the new image tag and applied to the EKS Cluster.
+* Run: Kubernetes triggers the container on the defined schedule (e.g., every 15 minutes).
+
+### Secret Management
+Sensitive credentials (like Google Service Account keys) are stored in GitHub Secrets and injected into the cluster during the deployment step.
+
+## Deployment Configuration
+
+### GitHub Actions Workflow
+The workflow is located at .github/workflows/deploy.yml. It uses OIDC to authenticate with AWS, removing the need for long-lived AWS Access Keys.
+
+### Kubernetes CronJob
+The scheduling and resource configuration are defined in cronjob.yml.
+
+Schedule: 0/15 * * * * (Every 15 minutes)
+
+Image Pull Policy: Uses the specific Commit SHA to ensure version consistency.
+
+Environment: All secrets are mapped via envFrom into the container's environment variables.
+---
 
 ## License
 
