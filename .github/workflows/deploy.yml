@@ -7,15 +7,14 @@ permissions:
   id-token: write
   contents: read
 
-# GLOBAL ENV
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  AWS_REGION: eu-central-1
-  ECR_REPOSITORY: equity-dlt-pipeline
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      AWS_REGION: eu-central-1
+      ECR_REPOSITORY: equity-dlt-pipeline
     outputs:
       registry: ${{ steps.login-ecr.outputs.registry }}
     steps:
@@ -42,6 +41,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      AWS_REGION: eu-central-1
+      ECR_REPOSITORY: equity-dlt-pipeline
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
