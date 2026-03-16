@@ -112,7 +112,6 @@ Schedule: 0/15 * * * * (Every 15 minutes)
 
 Image Pull Policy: Uses the specific Commit SHA to ensure version consistency.
 
-Environment: All secrets are mapped via envFrom into the container's environment variables.
 ---
 
 ## License
